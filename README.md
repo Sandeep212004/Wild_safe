@@ -1,46 +1,11 @@
 @api.route("/violations/filter/<gbgf>", methods=["GET"])
 def filter_by_gbgf(gbgf):
     try:
-        severities = ["High", "Medium", "Low"]
-        all_violations = []
-
-        for sev in severities:
-            endpoint = f"/itop2/public/report/weekly/violations/{sev}"
-            url = BASE_URL + endpoint
-
-            response = requests.get(
-                url,
-                headers=HEADERS,
-                verify=CERT_PATH
-            )
-
-            data = response.json()
-
-            # extract details array
-            details = data.get("details", [])
-            all_violations.extend(details)
-
-        # 🔥 filter by gbgf
-        filtered = [
-            v for v in all_violations
-            if str(v.get("gbgf", "")).lower() == gbgf.lower()
-        ]
-
-        return jsonify({
-            "gbgf": gbgf,
-            "total": len(filtered),
-            "violations": filtered
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)})
-
-
-@api.route("/violations/filter/<gbgf>", methods=["GET"])
-def filter_by_gbgf(gbgf):
-    try:
         severities = ["HighMedium", "Low"]
+
         all_violations = []
+        total_applications = 0
+        total_assets = 0
 
         for sev in severities:
             endpoint = f"/itop2/public/report/weekly/violations/{sev}"
@@ -54,14 +19,21 @@ def filter_by_gbgf(gbgf):
 
             res_json = response.json()
 
-            # 🔥 extract details correctly
-            details = res_json.get("data", {}).get("details", [])
+            data = res_json.get("data", {})
 
-            all_violations.extend(details)
+            # ✅ Get violations
+            violations = data.get("violationList", [])
+            all_violations.extend(violations)
 
-        print("TOTAL violations fetched:", len(all_violations))
+            # ✅ Get summary totals
+            summary = data.get("summary", [])
 
-        # 🔥 filter by gbgf
+            for item in summary:
+                if item.get("gbgf", "").lower() == gbgf.lower():
+                    total_applications += item.get("totalApplication", 0)
+                    total_assets += item.get("totalAsset", 0)
+
+        # ✅ Filter violations by gbgf
         filtered = [
             v for v in all_violations
             if str(v.get("gbgf", "")).lower() == gbgf.lower()
@@ -69,10 +41,12 @@ def filter_by_gbgf(gbgf):
 
         return jsonify({
             "gbgf": gbgf,
-            "total": len(filtered),
+            "totalViolations": len(filtered),
+            "totalApplications": total_applications,
+            "totalAssets": total_assets,
             "violations": filtered
         })
 
     except Exception as e:
         return jsonify({"error": str(e)})
-        
+
