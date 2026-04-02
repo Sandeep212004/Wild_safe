@@ -1,36 +1,99 @@
-wildsafe
-Refactor my existing React dashboard UI to look modern and minimal WITHOUT changing any business logic, API calls, or data structure.
+from flask import Flask, redirect, request, jsonify
+from config import Config
+from utils import (
+    get_staff_details,
+    get_verification_key,
+    decode_and_verify_token,
+    generate_app_jwt
+)
 
-Requirements:
-- Keep all existing functionality exactly the same
-- Only improve UI/UX and styling
+app = Flask(__name__)
+app.config.from_object(Config)
 
-Design updates:
-1. Use a clean, minimal design with lots of whitespace
-2. Replace bright colors with a soft palette (light gray background, white cards, muted text, one primary color like indigo or blue)
-3. Convert all Pie Charts into modern Donut Charts (use innerRadius, spacing, and soft colors)
-4. Replace at least one pie chart with a horizontal bar chart for better readability
-5. Improve all cards:
-   - Add border radius (12px–16px)
-   - Add subtle shadow
-   - Increase padding
-   - Use better typography (larger numbers, smaller labels)
-6. Use consistent spacing and alignment across the dashboard
-7. Add hover effects and smooth transitions
-8. Use a modern font like Inter or system-ui
-9. Use reusable components (e.g., StatCard, ChartCard)
 
-Tech constraints:
-- Keep using React (no framework change)
-- Prefer Tailwind CSS for styling (or clean CSS modules if already used)
-- If charts are used (Recharts or similar), only modify their appearance, not data logic
+# 🔹 Home
+@app.route("/")
+def home():
+    return "SSO Demo Running"
 
-Output:
-- Updated React components
-- Clean reusable UI components
-- Improved styling only
 
-Do NOT:
-- Change props structure
-- Change data fetching
-- Change backend logic
+# 🔹 Step 1: Redirect to SSO login
+@app.route("/login")
+def login():
+    sso_url = f"{app.config['SSO_BASE_URL']}/login?redirect_uri={app.config['SSO_REDIRECT_URI']}"
+    return redirect(sso_url)
+
+
+# 🔹 Step 2: Callback
+@app.route("/sso/callback")
+def callback():
+    token = request.args.get("token")
+
+    if not token:
+        return jsonify({"error": "Token not found in callback"}), 400
+
+    # 🔹 Step 3: Get verification key
+    public_key = get_verification_key()
+    if not public_key:
+        return jsonify({"error": "Failed to fetch verification key"}), 500
+
+    # 🔹 Step 4: Decode token
+    decoded = decode_and_verify_token(token, public_key)
+    if not decoded:
+        return jsonify({"error": "Invalid token"}), 401
+
+    # 🔹 Step 5: Extract staffId
+    staff_id = (
+        decoded.get("employeeId")
+        or decoded.get("staffId")
+        or decoded.get("sub")
+    )
+
+    if not staff_id:
+        return jsonify({"error": "staffId not found in token"}), 400
+
+    # 🔹 Step 6: Fetch user details
+    user = get_staff_details(token, staff_id)
+    if not user:
+        return jsonify({"error": "Failed to fetch user details"}), 401
+
+    # 🔹 Step 7: Generate app JWT
+    app_token = generate_app_jwt(user)
+
+    return jsonify({
+        "message": "Login successful",
+        "staff_id": staff_id,
+        "user": user,
+        "app_token": app_token
+    })
+
+
+# 🔒 Protected route
+@app.route("/dashboard")
+def dashboard():
+    auth_header = request.headers.get("Authorization")
+
+    if not auth_header:
+        return jsonify({"error": "Missing Authorization header"}), 401
+
+    try:
+        token = auth_header.split(" ")[1]
+
+        import jwt
+        decoded = jwt.decode(
+            token,
+            app.config["JWT_SECRET"],
+            algorithms=[app.config["JWT_ALGORITHM"]]
+        )
+
+        return jsonify({
+            "message": "Welcome to dashboard",
+            "user": decoded
+        })
+
+    except Exception:
+        return jsonify({"error": "Invalid token"}), 401
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
