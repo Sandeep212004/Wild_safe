@@ -1,99 +1,79 @@
-from flask import Flask, redirect, request, jsonify
-from config import Config
-from utils import (
-    get_staff_details,
-    get_verification_key,
-    decode_and_verify_token,
-    generate_app_jwt
-)
+Refactor the compliance dashboard UI to improve usability, responsiveness, and visual hierarchy.
 
-app = Flask(__name__)
-app.config.from_object(Config)
+Requirements:
 
+Remove horizontal scrolling from the ITOP2 and IDAM5 summary sections.
 
-# 🔹 Home
-@app.route("/")
-def home():
-    return "SSO Demo Running"
+Replace scrollable containers with a responsive CSS grid or flex layout.
 
+Ensure all summary cards are visible in a single glance on desktop screens.
 
-# 🔹 Step 1: Redirect to SSO login
-@app.route("/login")
-def login():
-    sso_url = f"{app.config['SSO_BASE_URL']}/login?redirect_uri={app.config['SSO_REDIRECT_URI']}"
-    return redirect(sso_url)
+Use breakpoints:
 
+Desktop: 4–6 cards per row
 
-# 🔹 Step 2: Callback
-@app.route("/sso/callback")
-def callback():
-    token = request.args.get("token")
+Tablet: 2–3 cards per row
 
-    if not token:
-        return jsonify({"error": "Token not found in callback"}), 400
+Mobile: 1 card per row
 
-    # 🔹 Step 3: Get verification key
-    public_key = get_verification_key()
-    if not public_key:
-        return jsonify({"error": "Failed to fetch verification key"}), 500
+Merge ITOP2 and IDAM5 summaries into a unified "Overview" section.
 
-    # 🔹 Step 4: Decode token
-    decoded = decode_and_verify_token(token, public_key)
-    if not decoded:
-        return jsonify({"error": "Invalid token"}), 401
+Either group them with headings or combine into a single set of key metrics.
 
-    # 🔹 Step 5: Extract staffId
-    staff_id = (
-        decoded.get("employeeId")
-        or decoded.get("staffId")
-        or decoded.get("sub")
-    )
+Prioritize important metrics like "Total Violations" and "Non-Compliant".
 
-    if not staff_id:
-        return jsonify({"error": "staffId not found in token"}), 400
+Redesign summary cards:
 
-    # 🔹 Step 6: Fetch user details
-    user = get_staff_details(token, staff_id)
-    if not user:
-        return jsonify({"error": "Failed to fetch user details"}), 401
+Add clear visual hierarchy (larger cards for critical metrics).
 
-    # 🔹 Step 7: Generate app JWT
-    app_token = generate_app_jwt(user)
+Include icons for each metric.
 
-    return jsonify({
-        "message": "Login successful",
-        "staff_id": staff_id,
-        "user": user,
-        "app_token": app_token
-    })
+Use consistent color coding:
 
+Red for high risk
 
-# 🔒 Protected route
-@app.route("/dashboard")
-def dashboard():
-    auth_header = request.headers.get("Authorization")
+Yellow for warnings
 
-    if not auth_header:
-        return jsonify({"error": "Missing Authorization header"}), 401
+Green for healthy metrics
 
-    try:
-        token = auth_header.split(" ")[1]
+Add hover effects and subtle shadows.
 
-        import jwt
-        decoded = jwt.decode(
-            token,
-            app.config["JWT_SECRET"],
-            algorithms=[app.config["JWT_ALGORITHM"]]
-        )
+Improve chart section:
 
-        return jsonify({
-            "message": "Welcome to dashboard",
-            "user": decoded
-        })
+Add labels and percentages inside donut charts.
 
-    except Exception:
-        return jsonify({"error": "Invalid token"}), 401
+Ensure consistent color mapping across charts.
 
+Add tooltips and legends for clarity.
 
-if __name__ == "__main__":
-    app.run(debug=True)
+Improve spacing and alignment.
+
+Enhance the "Top Risky Applications" section:
+
+Add ranking numbers (#1, #2, etc.)
+
+Show percentage or severity indicator
+
+Improve bar chart readability
+
+Improve table UX:
+
+Make table header sticky
+
+Enable sorting on columns
+
+Highlight rows with high non-compliance
+
+On row click, dynamically update the "Application Details" panel
+
+General UI improvements:
+
+Add consistent padding and spacing between sections
+
+Use a max-width container to avoid stretched layout
+
+Improve typography (font sizes, weights)
+
+Ensure accessibility (contrast, readable text)
+
+Ensure the entire dashboard is fully responsive and visually balanced without requiring horizontal scrolling.
