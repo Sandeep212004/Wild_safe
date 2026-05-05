@@ -1,36 +1,32 @@
 wildsafe
 import React from "react";
 
-function Filters({ filters, setFilters, onSearch }) {
+import React from "react";
+
+function PodTable({ data }) {
+  if (!data.length) return <p>No data</p>;
+
   return (
-    <div style={{ marginBottom: "20px" }}>
-      <input
-        placeholder="Cluster"
-        value={filters.cluster}
-        onChange={(e) =>
-          setFilters({ ...filters, cluster: e.target.value })
-        }
-      />
+    <table border="1">
+      <thead>
+        <tr>
+          {Object.keys(data[0]).map((key) => (
+            <th key={key}>{key}</th>
+          ))}
+        </tr>
+      </thead>
 
-      <input
-        placeholder="Namespace"
-        value={filters.namespace}
-        onChange={(e) =>
-          setFilters({ ...filters, namespace: e.target.value })
-        }
-      />
-
-      <input
-        placeholder="Pod"
-        value={filters.pod}
-        onChange={(e) =>
-          setFilters({ ...filters, pod: e.target.value })
-        }
-      />
-
-      <button onClick={onSearch}>Search</button>
-    </div>
+      <tbody>
+        {data.map((row, i) => (
+          <tr key={i}>
+            {Object.values(row).map((val, j) => (
+              <td key={j}>{val}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
-export default Filters;
+export default PodTable;
