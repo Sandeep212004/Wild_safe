@@ -1,32 +1,40 @@
 wildsafe
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { fetchPods } from "./services/api";
+import Filters from "./components/Filters";
+import PodTable from "./components/PodTable";
 
-import React from "react";
+function App() {
+  const [data, setData] = useState([]);
+  const [filters, setFilters] = useState({
+    cluster: "",
+    namespace: "",
+    pod: "",
+  });
 
-function PodTable({ data }) {
-  if (!data.length) return <p>No data</p>;
+  // Load initial data
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    const res = await fetchPods(filters);
+    setData(res);
+  };
 
   return (
-    <table border="1">
-      <thead>
-        <tr>
-          {Object.keys(data[0]).map((key) => (
-            <th key={key}>{key}</th>
-          ))}
-        </tr>
-      </thead>
+    <div style={{ padding: "20px" }}>
+      <h2>IKP Metrics Dashboard</h2>
 
-      <tbody>
-        {data.map((row, i) => (
-          <tr key={i}>
-            {Object.values(row).map((val, j) => (
-              <td key={j}>{val}</td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+      <Filters
+        filters={filters}
+        setFilters={setFilters}
+        onSearch={loadData}
+      />
+
+      <PodTable data={data} />
+    </div>
   );
 }
 
-export default PodTable;
+export default App;
